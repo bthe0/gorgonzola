@@ -4,8 +4,10 @@
     var g = {};
 
     g.map = function map(arr, cb) {
-        if (!Array.isArray(arr))
+        if (!Array.isArray(arr)
+            && !(arr instanceof NodeList)) {
             return cb(arr);
+        }
 
         var result = [];
 
@@ -55,6 +57,14 @@
         el.innerText = text;
     };
 
+    g.append = function append(sel, html) {
+        g.html(sel, g.html(sel) + html);
+    };
+
+    g.prepend = function prepend(sel, html) {
+        g.html(sel, html + g.html(sel));
+    };
+
     g.setup = function setup(options) {
         if (!g.settings) {
             g.settings = {};
@@ -63,7 +73,7 @@
         g.settings = Object.assign(g.settings, options);
     };
 
-    g.req = function req(url, method, data, cb) {
+    g.req = function req(method, url, data, cb) {
         var req = new XMLHttpRequest();
         var baseUrl = g.get('baseUrl', g.settings, '');
         var timeout = g.get('timeout', g.settings, false);
@@ -73,7 +83,7 @@
 
         if (method === 'get' && data) {
             var qs = Object.keys(data).map(function(key) {
-                return key+"="+encodeURIComponent(data[key])
+                return key + "=" + encodeURIComponent(data[key])
             }).join("&");
             url = [url, '?', qs].join('');
         }
@@ -125,11 +135,13 @@
         var split = key.split('.');
 
         for (var i = 0, len = split.length; i < len - 1; i++) {
-            var key = split[i];
-            if (where[key] === undefined || where[key] === null) {
-                where[key] = {};
+            var current = split[i];
+
+            if (where[current] === undefined || where[current] === null) {
+                where[current] = {};
             }
-            where = where[key];
+
+            where = where[current];
         }
 
         where[split[i]] = value;
@@ -169,15 +181,20 @@
                 return value;
             },
             set: function(val) {
-                cb(value, val);
+                var oldValue = value;
                 value = val;
+                cb(oldValue, val);
             }
         });
     };
 
     g.bind = function bind(sel, event, cb) {
-        return g.map(g.el(sel), function(el) {
-            el.addEventListener(event, cb);
+        return document.addEventListener(event, function(e) {
+            if (!e.target.matches(sel)) {
+                return;
+            }
+
+            cb(e);
         });
     };
 

@@ -8,10 +8,40 @@
     <title>Document</title>
 </head>
 <body>
-    <script type="text/template" id="test">
+    <div id="a">
+        <button id="load">Load data</button>
+        <button id="remove">Remove</button>
+    </div>
 
-        <h1>{{a.b.c}}</h1>
+    <script type="text/template" id="test">
+        <div class="info">
+            <h1>{{origin}}</h1>
+            <h1>{{url}}</h1>
+            <button class="remove">Remove this one</button>
+        </div>
     </script>
     <script src="/index.js"></script>
+
+    <script>
+        var state = {
+            filters: {}
+        };
+
+        var load = function() {
+            g8a.req('get', 'https://httpbin.org/get', state.filters, function(ok, data) {
+                g8a.prepend('#a', g8a.tpl('test', data));
+            });
+        };
+
+        var remove = function() {
+            g8a.remove('.info');
+        };
+
+        g8a.bind('#load', 'click', load);
+        g8a.bind('#remove', 'click', remove);
+        g8a.bind('.remove', 'click', function (e) {
+            e.target.parentNode.remove();
+        });
+    </script>
 </body>
 </html>
