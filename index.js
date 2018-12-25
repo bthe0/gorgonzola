@@ -131,20 +131,44 @@
         return req;
     };
 
-    g.set = function set(key, value, where) {
+    g.set = function set(key, value, where, options) {
         var split = key.split('.');
+        var source = {};
 
-        for (var i = 0, len = split.length; i < len - 1; i++) {
-            var current = split[i];
+        if (g.is(where, 'object')) {
+            source = where;
 
-            if (where[current] === undefined || where[current] === null) {
-                where[current] = {};
+            for (var i = 0, len = split.length; i < len - 1; i++) {
+                var current = split[i];
+
+                if (source[current] === undefined || source[current] === null) {
+                    source[current] = {};
+                }
+
+                source = source[current];
             }
 
-            where = where[current];
+            source[split[i]] = value;
+            return source;
         }
 
-        where[split[i]] = value;
+        if (where === 'cookie') {
+            var expires = "";
+            options = options || {};
+            var days = options.days;
+
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        if (where === 'localStorage') {
+            localStorage.setItem(key, value);
+        }
     };
 
     g.get = function get(key, where, defaultValue) {
@@ -152,22 +176,45 @@
 
         if (g.is(where, 'object')) {
             source = where;
-        }
 
-        var split = key.split('.');
-        var tmp = source;
+            var split = key.split('.');
+            var tmp = source;
 
-        for (var i = 0, len = split.length; i < len; i++) {
-            var current = split[i];
+            for (var i = 0, len = split.length; i < len; i++) {
+                var current = split[i];
 
-            if (!tmp[current]) {
-                return defaultValue || false;
+                if (!tmp[current]) {
+                    return defaultValue || false;
+                }
+
+                tmp = tmp[current];
             }
 
-            tmp = tmp[current];
+            return tmp;
         }
 
-        return tmp;
+        if (where === 'localStorage') {
+            return localStorage.getItem(key) || defaultValue;
+        }
+
+        if (where === 'cookie') {
+            var nameEQ = key + "=";
+            var ca = document.cookie.split(';');
+
+            for (var i = 0, len = ca.length; i < len; i++) {
+                var c = ca[i];
+
+                while (c.charAt(0) === ' ') {
+                    c = c.substring(1, c.length);
+                }
+
+                if (c.indexOf(nameEQ) === 0) {
+                    return c.substring(nameEQ.length, c.length);
+                }
+            }
+
+            return defaultValue;
+        }
     };
 
     g.is = function is(what, type) {
@@ -181,9 +228,9 @@
                 return value;
             },
             set: function(val) {
-                var oldValue = value;
+                var old = value;
                 value = val;
-                cb(oldValue, val);
+                cb(old, val);
             }
         });
     };
